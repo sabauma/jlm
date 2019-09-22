@@ -485,7 +485,6 @@ convert_icmp_instruction(llvm::Instruction * instruction, tacsvector_t & tacs, c
 		JLM_ASSERT(0);
 
 	auto result = ctx.module().create_variable(*convert_type(i->getType(), ctx));
-	ctx.insert_value(i, result);
 
 	JLM_DEBUG_ASSERT(is<jive::binary_op>(*binop));
 	if (t->isVectorTy()) {
@@ -518,7 +517,6 @@ convert_fcmp_instruction(llvm::Instruction * instruction, tacsvector_t & tacs, c
 	});
 
 	auto r = ctx.module().create_variable(*convert_type(i->getType(), ctx));
-	ctx.insert_value(i, r);
 
 	auto op1 = convert_value(i->getOperand(0), tacs, ctx);
 	auto op2 = convert_value(i->getOperand(1), tacs, ctx);
@@ -544,7 +542,6 @@ convert_load_instruction(llvm::Instruction * i, tacsvector_t & tacs, context & c
 	/* FIXME: volatile and alignment */
 
 	auto value = ctx.module().create_variable(*convert_type(i->getType(), ctx));
-	ctx.insert_value(i, value);
 	auto address = convert_value(instruction->getPointerOperand(), tacs, ctx);
 	tacs.push_back(create_load_tac(address, ctx.state(), instruction->getAlignment(), value));
 
@@ -562,7 +559,7 @@ convert_store_instruction(llvm::Instruction * i, tacsvector_t & tacs, context & 
 	auto value = convert_value(instruction->getValueOperand(), tacs, ctx);
 	tacs.push_back(create_store_tac(address, value, instruction->getAlignment(), ctx.state()));
 
-	return nullptr;
+	return tacs.back()->output(0);
 }
 
 static inline const variable *
@@ -571,7 +568,6 @@ convert_phi_instruction(llvm::Instruction * i, tacsvector_t & tacs, context & ct
 	JLM_DEBUG_ASSERT(i->getOpcode() == llvm::Instruction::PHI);
 
 	auto result = ctx.module().create_tacvariable(*convert_type(i->getType(), ctx));
-	ctx.insert_value(i, result);
 
 	tacs.push_back(phi_op::create({}, result));
 	result->set_tac(tacs.back().get());
@@ -592,7 +588,6 @@ convert_getelementptr_instruction(llvm::Instruction * inst, tacsvector_t & tacs,
 		indices.push_back(convert_value(*it, tacs, ctx));
 
 	auto result = m.create_variable(*convert_type(i->getType(), ctx));
-	ctx.insert_value(i, result);
 
 	tacs.push_back(create_getelementptr_tac(base, indices, result));
 	return tacs.back()->output(0);
@@ -630,7 +625,6 @@ convert_call_instruction(llvm::Instruction * instruction, tacsvector_t & tacs, c
 	std::vector<const jlm::variable*> results;
 	if (!ftype->getReturnType()->isVoidTy()) {
 		auto result = ctx.module().create_variable(*convert_type(i->getType(), ctx));
-		ctx.insert_value(i, result);
 		results.push_back(result);
 	}
 	results.push_back(ctx.state());
@@ -647,7 +641,6 @@ convert_select_instruction(llvm::Instruction * i, tacsvector_t & tacs, context &
 	auto instruction = static_cast<llvm::SelectInst*>(i);
 
 	auto r = ctx.module().create_variable(*convert_type(i->getType(), ctx));
-	ctx.insert_value(i, r);
 
 	auto condition = convert_value(instruction->getCondition(), tacs, ctx);
 	auto tv = convert_value(instruction->getTrueValue(), tacs, ctx);
@@ -707,7 +700,6 @@ convert_binary_operator(llvm::Instruction * instruction, tacsvector_t & tacs, co
 		JLM_ASSERT(0);
 
 	auto r = ctx.module().create_variable(*convert_type(i->getType(), ctx));
-	ctx.insert_value(i, r);
 
 	auto op1 = convert_value(i->getOperand(0), tacs, ctx);
 	auto op2 = convert_value(i->getOperand(1), tacs, ctx);
@@ -730,7 +722,7 @@ convert_alloca_instruction(llvm::Instruction * instruction, tacsvector_t & tacs,
 	auto i = static_cast<llvm::AllocaInst*>(instruction);
 
 	auto result = ctx.module().create_variable(*convert_type(i->getType(), ctx));
-	ctx.insert_value(instruction, result);
+
 	auto size = convert_value(i->getArraySize(), tacs, ctx);
 	auto vtype = convert_type(i->getAllocatedType(), ctx);
 	tacs.push_back(create_alloca_tac(*vtype, size, i->getAlignment(), ctx.state(), result));
@@ -752,7 +744,6 @@ convert_extractvalue(llvm::Instruction * i, tacsvector_t & tacs, context & ctx)
 	auto ev = llvm::dyn_cast<llvm::ExtractValueInst>(i);
 
 	auto result = ctx.module().create_variable(*convert_type(i->getType(), ctx));
-	ctx.insert_value(i, result);
 
 	auto aggregate = convert_value(ev->getOperand(0), tacs, ctx);
 	tacs.push_back(extractvalue_op::create(aggregate, ev->getIndices(), result));
@@ -765,7 +756,6 @@ convert_extractelement_instruction(llvm::Instruction * i, tacsvector_t & tacs, c
 	JLM_DEBUG_ASSERT(i->getOpcode() == llvm::Instruction::ExtractElement);
 
 	auto result = ctx.module().create_variable(*convert_type(i->getType(), ctx));
-	ctx.insert_value(i, result);
 
 	auto vector = convert_value(i->getOperand(0), tacs, ctx);
 	auto index = convert_value(i->getOperand(1), tacs, ctx);
@@ -779,7 +769,6 @@ convert_shufflevector_instruction(llvm::Instruction * i, tacsvector_t & tacs, co
 	JLM_DEBUG_ASSERT(i->getOpcode() == llvm::Instruction::ShuffleVector);
 
 	auto result = ctx.module().create_variable(*convert_type(i->getType(), ctx));
-	ctx.insert_value(i, result);
 
 	auto v1 = convert_value(i->getOperand(0), tacs, ctx);
 	auto v2 = convert_value(i->getOperand(1), tacs, ctx);
@@ -794,7 +783,6 @@ convert_insertelement_instruction(llvm::Instruction * i, tacsvector_t & tacs, co
 	JLM_DEBUG_ASSERT(i->getOpcode() == llvm::Instruction::InsertElement);
 
 	auto result = ctx.module().create_variable(*convert_type(i->getType(), ctx));
-	ctx.insert_value(i, result);
 
 	auto vector = convert_value(i->getOperand(0), tacs, ctx);
 	auto value = convert_value(i->getOperand(1), tacs, ctx);
@@ -835,7 +823,6 @@ convert_cast_instruction(llvm::Instruction * i, tacsvector_t & tacs, context & c
 	});
 
 	auto r = ctx.module().create_variable(*convert_type(i->getType(), ctx));
-	ctx.insert_value(i, r);
 
 	auto op = convert_value(i->getOperand(0), tacs, ctx);
 	auto srctype = convert_type(st->isVectorTy() ? st->getVectorElementType() : st, ctx);

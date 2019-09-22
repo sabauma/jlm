@@ -152,7 +152,7 @@ public:
 		return vmap_.find(value) != vmap_.end();
 	}
 
-	inline jlm::variable *
+	inline const jlm::variable *
 	lookup_value(const llvm::Value * value) const noexcept
 	{
 		JLM_DEBUG_ASSERT(has_value(value));
@@ -160,7 +160,7 @@ public:
 	}
 
 	inline void
-	insert_value(const llvm::Value * value, jlm::variable * variable)
+	insert_value(const llvm::Value * value, const jlm::variable * variable)
 	{
 		JLM_DEBUG_ASSERT(!has_value(value));
 		vmap_[value] = variable;
@@ -209,7 +209,7 @@ private:
 	jlm::variable * state_;
 	ipgraph_node * node_;
 	jlm::variable * result_;
-	std::unordered_map<const llvm::Value*, jlm::variable*> vmap_;
+	std::unordered_map<const llvm::Value*, const jlm::variable*> vmap_;
 	std::unordered_map<
 		const llvm::StructType*,
 		const jive::rcddeclaration*> declarations_;
