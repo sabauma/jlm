@@ -400,7 +400,7 @@ convert_branch_instruction(llvm::Instruction * instruction, tacsvector_t & tacs,
 	auto nbits = i->getCondition()->getType()->getIntegerBitWidth();
 	auto op = jive::match_op(nbits, {{1, 1}}, 0, 2);
 	tacs.push_back(tac::create(op, {c}, create_result_variables(ctx.module(), op)));
-	tacs.push_back(create_branch_tac(2,  tacs.back()->output(0)));
+	tacs.push_back(create_branch_tac(2,  tacs.back()->result(0)));
 
 	return nullptr;
 }
@@ -427,7 +427,7 @@ convert_switch_instruction(llvm::Instruction * instruction, tacsvector_t & tacs,
 	auto nbits = i->getCondition()->getType()->getIntegerBitWidth();
 	auto op = jive::match_op(nbits, mapping, n, n+1);
 	tacs.push_back(tac::create(op, {c}, create_result_variables(ctx.module(), op)));
-	tacs.push_back((create_branch_tac(n+1, tacs.back()->output(0))));
+	tacs.push_back((create_branch_tac(n+1, tacs.back()->result(0))));
 
 	return nullptr;
 }
@@ -495,7 +495,7 @@ convert_icmp_instruction(llvm::Instruction * instruction, tacsvector_t & tacs, c
 			{op1, op2}, {result}));
 	}
 
-	return tacs.back()->output(0);
+	return tacs.back()->result(0);
 }
 
 static const variable *
@@ -530,7 +530,7 @@ convert_fcmp_instruction(llvm::Instruction * instruction, tacsvector_t & tacs, c
 	else
 		tacs.push_back(tac::create(operation, {op1, op2}, {r}));
 
-	return tacs.back()->output(0);
+	return tacs.back()->result(0);
 }
 
 static inline const variable *
@@ -545,7 +545,7 @@ convert_load_instruction(llvm::Instruction * i, tacsvector_t & tacs, context & c
 	auto address = convert_value(instruction->getPointerOperand(), tacs, ctx);
 	tacs.push_back(create_load_tac(address, ctx.state(), instruction->getAlignment(), value));
 
-	return tacs.back()->output(0);
+	return tacs.back()->result(0);
 }
 
 static inline const variable *
@@ -559,7 +559,7 @@ convert_store_instruction(llvm::Instruction * i, tacsvector_t & tacs, context & 
 	auto value = convert_value(instruction->getValueOperand(), tacs, ctx);
 	tacs.push_back(create_store_tac(address, value, instruction->getAlignment(), ctx.state()));
 
-	return tacs.back()->output(0);
+	return tacs.back()->result(0);
 }
 
 static inline const variable *
@@ -572,7 +572,7 @@ convert_phi_instruction(llvm::Instruction * i, tacsvector_t & tacs, context & ct
 	tacs.push_back(phi_op::create({}, result));
 	result->set_tac(tacs.back().get());
 
-	return tacs.back()->output(0);
+	return tacs.back()->result(0);
 }
 
 static inline const variable *
@@ -590,7 +590,7 @@ convert_getelementptr_instruction(llvm::Instruction * inst, tacsvector_t & tacs,
 	auto result = m.create_variable(*convert_type(i->getType(), ctx));
 
 	tacs.push_back(create_getelementptr_tac(base, indices, result));
-	return tacs.back()->output(0);
+	return tacs.back()->result(0);
 }
 
 static inline const variable *
@@ -617,7 +617,7 @@ convert_call_instruction(llvm::Instruction * instruction, tacsvector_t & tacs, c
 
 	if (ftype->isVarArg()) {
 		tacs.push_back(create_valist_tac(vargs, ctx.module()));
-		arguments.push_back(tacs.back()->output(0));
+		arguments.push_back(tacs.back()->result(0));
 	}
 	arguments.push_back(ctx.state());
 
@@ -631,7 +631,7 @@ convert_call_instruction(llvm::Instruction * instruction, tacsvector_t & tacs, c
 
 	auto fctvar = convert_value(f, tacs, ctx);
 	tacs.push_back(create_call_tac(fctvar, arguments, results));
-	return tacs.back()->output(0);
+	return tacs.back()->result(0);
 }
 
 static inline const variable *
@@ -647,7 +647,7 @@ convert_select_instruction(llvm::Instruction * i, tacsvector_t & tacs, context &
 	auto fv = convert_value(instruction->getFalseValue(), tacs, ctx);
 	tacs.push_back(tac::create(select_op(tv->type()), {condition, tv, fv}, {r}));
 
-	return tacs.back()->output(0);
+	return tacs.back()->result(0);
 }
 
 static inline const variable *
@@ -712,7 +712,7 @@ convert_binary_operator(llvm::Instruction * instruction, tacsvector_t & tacs, co
 		tacs.push_back(tac::create(*static_cast<jive::simple_op*>(operation.get()), {op1, op2}, {r}));
 	}
 
-	return tacs.back()->output(0);
+	return tacs.back()->result(0);
 }
 
 static inline const variable *
@@ -727,7 +727,7 @@ convert_alloca_instruction(llvm::Instruction * instruction, tacsvector_t & tacs,
 	auto vtype = convert_type(i->getAllocatedType(), ctx);
 	tacs.push_back(create_alloca_tac(*vtype, size, i->getAlignment(), ctx.state(), result));
 
-	return tacs.back()->output(0);
+	return tacs.back()->result(0);
 }
 
 static inline const variable *
@@ -747,7 +747,7 @@ convert_extractvalue(llvm::Instruction * i, tacsvector_t & tacs, context & ctx)
 
 	auto aggregate = convert_value(ev->getOperand(0), tacs, ctx);
 	tacs.push_back(extractvalue_op::create(aggregate, ev->getIndices(), result));
-	return tacs.back()->output(0);
+	return tacs.back()->result(0);
 }
 
 static inline const variable *
@@ -760,7 +760,7 @@ convert_extractelement_instruction(llvm::Instruction * i, tacsvector_t & tacs, c
 	auto vector = convert_value(i->getOperand(0), tacs, ctx);
 	auto index = convert_value(i->getOperand(1), tacs, ctx);
 	tacs.push_back(extractelement_op::create(vector, index, result));
-	return tacs.back()->output(0);
+	return tacs.back()->result(0);
 }
 
 static inline const variable *
@@ -774,7 +774,7 @@ convert_shufflevector_instruction(llvm::Instruction * i, tacsvector_t & tacs, co
 	auto v2 = convert_value(i->getOperand(1), tacs, ctx);
 	auto mask = convert_value(i->getOperand(2), tacs, ctx);
 	tacs.push_back(shufflevector_op::create(v1, v2, mask, result));
-	return tacs.back()->output(0);
+	return tacs.back()->result(0);
 }
 
 static const variable *
@@ -788,7 +788,7 @@ convert_insertelement_instruction(llvm::Instruction * i, tacsvector_t & tacs, co
 	auto value = convert_value(i->getOperand(1), tacs, ctx);
 	auto index = convert_value(i->getOperand(2), tacs, ctx);
 	tacs.push_back(insertelement_op::create(vector, value, index, result));
-	return tacs.back()->output(0);
+	return tacs.back()->result(0);
 }
 
 template<class OP> static std::unique_ptr<jive::operation>
@@ -837,7 +837,7 @@ convert_cast_instruction(llvm::Instruction * i, tacsvector_t & tacs, context & c
 	else
 		tacs.push_back(tac::create(*static_cast<jive::simple_op*>(unop.get()), {op}, {r}));
 
-	return tacs.back()->output(0);
+	return tacs.back()->result(0);
 }
 
 const variable *
